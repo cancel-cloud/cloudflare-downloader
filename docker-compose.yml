@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
     environment:
       - BASE_DOWNLOAD_DIR=/data
-    command: gunicorn -w 4 -b 0.0.0.0:8000 app.main:app
+    command: gunicorn -w 1 -b 0.0.0.0:8000 app.main:app
     volumes:
       - /srv/cloudflare-downloader:/data
     ports:

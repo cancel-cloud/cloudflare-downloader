@@ -68,6 +68,7 @@
     }
     .status-queued { background: #3a3a00; color: #ffeb3b; }
     .status-downloading { background: #003a3a; color: #4fc3f7; }
+    .status-retrying { background: #3a2f00; color: #ffcc66; }
     .status-completed { background: #003a00; color: #8bd48b; }
     .status-failed { background: #3a0000; color: #ff6b6b; }
   </style>
@@ -237,6 +238,7 @@
         let statusClass = "muted";
         if (job.status === "queued") statusClass = "status-queued";
         if (job.status === "downloading") statusClass = "status-downloading";
+        if (job.status === "retrying") statusClass = "status-retrying";
         if (job.status === "completed") statusClass = "status-completed";
         if (job.status === "failed") statusClass = "status-failed";
 

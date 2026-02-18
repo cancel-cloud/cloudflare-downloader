@@ -1,14 +1,16 @@
 import os
+import shutil
 import threading
 import uuid
 import time
 import concurrent.futures
 from datetime import datetime
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 import json
 import glob
 from flask import Flask, request, render_template, jsonify, send_from_directory, abort
-from yt_dlp import YoutubeDL
+from yt_dlp import YoutubeDL, version as yt_dlp_version
+from yt_dlp.utils import DownloadError
 
 app = Flask(__name__)
 
@@ -24,31 +26,213 @@ executor = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_CONCURRENT_DOWN
 job_status = {}
 job_lock = threading.Lock()
 
-# yt-dlp: immer höchste Qualität
-YDL_OPTS = {
+# yt-dlp Grundkonfiguration
+BASE_YDL_OPTS = {
     "outtmpl": os.path.join(BASE_DOWNLOAD_DIR, "%(title).200B [%(id)s].%(ext)s"),
     "restrictfilenames": True,
     "quiet": True,
     "writethumbnail": True,
     "writeinfojson": True,
     "merge_output_format": "mp4",
-    "format": "bestvideo+bestaudio/best",
-    "ignoreerrors": True,
     "retries": 3,
     "noprogress": True,
-    "concurrent_fragment_downloads": 5
+    "concurrent_fragment_downloads": 5,
 }
 
+# Runtime + Fallback Steuerung (env-overridable)
+YTDLP_JS_RUNTIME = os.environ.get("YTDLP_JS_RUNTIME", "node").strip()
+YTDLP_JS_RUNTIME_PATH = os.environ.get("YTDLP_JS_RUNTIME_PATH", "/usr/bin/node").strip()
+YTDLP_FFMPEG_PATH = os.environ.get("YTDLP_FFMPEG_PATH", "").strip()
+YTDLP_PRIMARY_FORMAT = os.environ.get("YTDLP_PRIMARY_FORMAT", "bestvideo+bestaudio/best").strip() or "bestvideo+bestaudio/best"
+YTDLP_FALLBACK_FORMAT = os.environ.get("YTDLP_FALLBACK_FORMAT", "best[ext=mp4]/best").strip() or "best[ext=mp4]/best"
+YTDLP_ENABLE_YOUTUBE_FALLBACK = os.environ.get("YTDLP_ENABLE_YOUTUBE_FALLBACK", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+RETRYABLE_ERROR_TOKENS = (
+    "403",
+    "forbidden",
+    "sabr",
+    "missing a url",
+    "unable to download video data",
+)
+
+
+class DownloadFailedError(Exception):
+    def __init__(
+        self,
+        message: str,
+        attempt: int,
+        attempts: int,
+        runtime_profile: str,
+        original_exception: Exception | None = None,
+    ):
+        super().__init__(message)
+        self.attempt = attempt
+        self.attempts = attempts
+        self.runtime_profile = runtime_profile
+        self.original_exception = original_exception
+
+
+def build_js_runtimes() -> dict[str, dict[str, str]]:
+    """Erzeugt yt-dlp js_runtimes im erwarteten Dict-Format."""
+    if not YTDLP_JS_RUNTIME:
+        return {}
+
+    runtime_cfg: dict[str, dict[str, str]] = {}
+    if YTDLP_JS_RUNTIME_PATH:
+        runtime_cfg[YTDLP_JS_RUNTIME] = {"path": YTDLP_JS_RUNTIME_PATH}
+    else:
+        runtime_cfg[YTDLP_JS_RUNTIME] = {}
+    return runtime_cfg
+
+
+def is_youtube_url(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return "youtube.com" in host or "youtu.be" in host
+
+
+def is_retryable_download_error(error_text: str) -> bool:
+    lowered = error_text.lower()
+    return any(token in lowered for token in RETRYABLE_ERROR_TOKENS)
+
+
+def build_ydl_opts(
+    url: str,
+    runtime_profile: str,
+    attempt_idx: int,
+    total_attempts: int,
+    for_probe: bool = False,
+) -> dict:
+    opts = dict(BASE_YDL_OPTS)
+    opts["format"] = YTDLP_PRIMARY_FORMAT if runtime_profile == "primary" else YTDLP_FALLBACK_FORMAT
+    opts["retries"] = max(BASE_YDL_OPTS.get("retries", 3), 3)
+
+    js_runtimes = build_js_runtimes()
+    if js_runtimes:
+        opts["js_runtimes"] = js_runtimes
+
+    if YTDLP_FFMPEG_PATH:
+        opts["ffmpeg_location"] = YTDLP_FFMPEG_PATH
+
+    if is_youtube_url(url) and runtime_profile == "fallback":
+        opts["extractor_args"] = {
+            "youtube": {
+                "player_client": ["android_vr", "android", "ios", "tv"],
+            }
+        }
+
+    if for_probe:
+        opts["skip_download"] = True
+
+    return opts
+
+
+def log_startup_diagnostics():
+    js_runtimes = build_js_runtimes()
+    runtime_name = next(iter(js_runtimes), None)
+    configured_runtime_path = None
+    if runtime_name:
+        configured_runtime_path = js_runtimes.get(runtime_name, {}).get("path")
+    resolved_runtime_path = configured_runtime_path or (shutil.which(runtime_name) if runtime_name else None)
+
+    ffmpeg_path = YTDLP_FFMPEG_PATH or (shutil.which("ffmpeg") or "")
+
+    print(
+        "[STARTUP] yt-dlp=%s js_runtime=%s configured_runtime_path=%s resolved_runtime_path=%s "
+        "ffmpeg=%s max_concurrent_downloads=%s base_download_dir=%s"
+        % (
+            yt_dlp_version.__version__,
+            runtime_name or "disabled",
+            configured_runtime_path or "-",
+            resolved_runtime_path or "not_found",
+            ffmpeg_path or "not_found",
+            MAX_CONCURRENT_DOWNLOADS,
+            BASE_DOWNLOAD_DIR,
+        )
+    )
+
+
 def extract_info(url: str):
-    opts = dict(YDL_OPTS)
-    opts["skip_download"] = True
+    opts = build_ydl_opts(url, runtime_profile="primary", attempt_idx=1, total_attempts=1, for_probe=True)
     with YoutubeDL(opts) as ydl:
         return ydl.extract_info(url, download=False)
 
-def download_video(url: str, job_id: str):
-    opts = dict(YDL_OPTS)
-    with YoutubeDL(opts) as ydl:
-        ydl.download([url])
+
+def download_video(url: str, job_id: str) -> dict[str, int | str]:
+    is_yt = is_youtube_url(url)
+    attempts = ["primary"]
+    if is_yt and YTDLP_ENABLE_YOUTUBE_FALLBACK:
+        attempts.append("fallback")
+
+    total_attempts = len(attempts)
+
+    for attempt_idx, runtime_profile in enumerate(attempts, start=1):
+        update_job_status(
+            job_id,
+            "downloading" if attempt_idx == 1 else "retrying",
+            url=url,
+            attempt=attempt_idx,
+            attempts=total_attempts,
+            runtime_profile=runtime_profile,
+            error=None,
+            last_exception_type=None,
+        )
+        print(f"[JOB] Attempt {attempt_idx}/{total_attempts} ({runtime_profile}) for {url}")
+
+        opts = build_ydl_opts(
+            url=url,
+            runtime_profile=runtime_profile,
+            attempt_idx=attempt_idx,
+            total_attempts=total_attempts,
+            for_probe=False,
+        )
+
+        try:
+            with YoutubeDL(opts) as ydl:
+                ret = ydl.download([url])
+            if ret != 0:
+                raise DownloadError(f"yt-dlp exited with status {ret}")
+
+            return {
+                "attempt": attempt_idx,
+                "attempts": total_attempts,
+                "runtime_profile": runtime_profile,
+            }
+        except DownloadError as exc:
+            message = str(exc)
+            retryable = (
+                attempt_idx < total_attempts
+                and runtime_profile == "primary"
+                and is_retryable_download_error(message)
+            )
+            if retryable:
+                print(f"[JOB] Retry with fallback after error: {message}")
+                continue
+
+            raise DownloadFailedError(
+                message=message,
+                attempt=attempt_idx,
+                attempts=total_attempts,
+                runtime_profile=runtime_profile,
+                original_exception=exc,
+            ) from exc
+        except Exception as exc:
+            message = str(exc)
+            retryable = (
+                attempt_idx < total_attempts
+                and runtime_profile == "primary"
+                and is_retryable_download_error(message)
+            )
+            if retryable:
+                print(f"[JOB] Retry with fallback after unexpected error: {message}")
+                continue
+
+            raise DownloadFailedError(
+                message=message,
+                attempt=attempt_idx,
+                attempts=total_attempts,
+                runtime_profile=runtime_profile,
+                original_exception=exc,
+            ) from exc
 
 def update_job_status(job_id: str, status: str, **kwargs):
     with job_lock:
@@ -60,15 +244,44 @@ def process_download(url: str, job_id: str):
     """Führt den Download im ThreadPool aus"""
     try:
         print(f"[JOB] Starting: {url} (Job: {job_id})")
-        update_job_status(job_id, "downloading", url=url)
-        
-        download_video(url, job_id)
-        
-        update_job_status(job_id, "completed", url=url)
+        result = download_video(url, job_id)
+
+        update_job_status(
+            job_id,
+            "completed",
+            url=url,
+            attempt=result.get("attempt"),
+            attempts=result.get("attempts"),
+            runtime_profile=result.get("runtime_profile"),
+            error=None,
+            last_exception_type=None,
+        )
         print(f"[JOB] Done: {url}")
+    except DownloadFailedError as e:
+        original_type = type(e.original_exception).__name__ if e.original_exception else "DownloadFailedError"
+        print(f"[JOB ERROR] {url}: {e}")
+        update_job_status(
+            job_id,
+            "failed",
+            url=url,
+            error=str(e),
+            attempt=e.attempt,
+            attempts=e.attempts,
+            runtime_profile=e.runtime_profile,
+            last_exception_type=original_type,
+        )
     except Exception as e:
         print(f"[JOB ERROR] {url}: {e}")
-        update_job_status(job_id, "failed", url=url, error=str(e))
+        update_job_status(
+            job_id,
+            "failed",
+            url=url,
+            error=str(e),
+            attempt=1,
+            attempts=1,
+            runtime_profile="primary",
+            last_exception_type=type(e).__name__,
+        )
 
 def cleanup_jobs():
     """Löscht alte Jobs regelmäßig aus dem Speicher"""
@@ -96,6 +309,7 @@ def cleanup_jobs():
 
 # Cleanup-Thread starten
 threading.Thread(target=cleanup_jobs, daemon=True).start()
+log_startup_diagnostics()
 
 @app.route("/", methods=["GET"])
 def index():

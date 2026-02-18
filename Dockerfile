@@ -25,4 +25,4 @@ ENV BASE_DOWNLOAD_DIR=/data
 EXPOSE 8000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "app.main:app"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8000", "app.main:app"]
