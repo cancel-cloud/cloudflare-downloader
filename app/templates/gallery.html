@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DevBrew ⚪ Galerie</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { 
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      max-width: 1200px; 
+      margin: 2rem auto; 
+      padding: 0 1rem; 
+      color: #eee; 
+      background: #0a0a0a;
+    }
+    header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+    h1 { margin: 0; font-size: 1.5rem; }
+    
+    .btn { 
+      display: inline-block;
+      padding: .6rem .9rem; 
+      border-radius: .5rem; 
+      border: 1px solid #444; 
+      background: #1b1b1b; 
+      color: #eee; 
+      cursor: pointer;
+      font-size: .95rem;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #222; }
+    .btn-danger { border-color: #5a2a2a; color: #ff6b6b; background: #2a1010; }
+    .btn-danger:hover { background: #3a1515; }
+    
+    /* Search Bar */
+    .search-container { margin-bottom: 2rem; }
+    input[type="search"] {
+      width: 100%;
+      padding: .75rem 1rem;
+      border-radius: .5rem;
+      border: 1px solid #333;
+      background: #111;
+      color: #eee;
+      font-size: 1.1rem;
+    }
+    
+    /* Grid System */
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .video-card {
+        background: #141414;
+        border: 1px solid #333;
+        border-radius: .75rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .video-thumb {
+        width: 100%;
+        aspect-ratio: 16/9;
+        object-fit: cover;
+        background: #000;
+    }
+    .video-content { padding: 1rem; flex: 1; display: flex; flex-direction: column; }
+    
+    .video-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .video-author { color: #9aa0a6; font-size: 0.9rem; margin-bottom: 1rem; }
+    
+    .video-actions {
+        margin-top: auto;
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .video-actions .btn { flex: 1; text-align: center; }
+    
+    .video-original {
+        display: block;
+        text-align: center;
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        color: #9aa0a6;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .video-original:hover { color: #eee; text-decoration: underline; }
+    
+    .hidden { display: none !important; }
+    
+    .empty-state {
+        text-align: center;
+        color: #666;
+        margin-top: 4rem;
+        grid-column: 1 / -1;
+    }
+
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DevBrew ⚪ Galerie</h1>
+    <a href="/" class="btn">← Zurück zum Downloader</a>
+  </header>
+
+  <div class="search-container">
+    <input type="search" id="searchInput" placeholder="Suche nach Titel oder Kanal..." oninput="filterVideos()">
+  </div>
+
+  <div class="gallery-grid" id="galleryGrid">
+    {% if videos %}
+        {% for video in videos %}
+        <div class="video-card" data-title="{{ video.title|lower }}" data-author="{{ video.uploader|lower }}">
+            {% if video.thumbnail %}
+                <img src="/files/{{ video.thumbnail }}" class="video-thumb" alt="Thumbnail">
+            {% else %}
+                <div class="video-thumb" style="display: flex; align-items: center; justify-content: center; color: #333;">No Thumbnail</div>
+            {% endif %}
+            
+            <div class="video-content">
+                <div class="video-title" title="{{ video.title }}">{{ video.title }}</div>
+                <div class="video-author">by {{ video.uploader }}</div>
+                
+                <div class="video-actions">
+                    <a href="/files/{{ video.filename }}" class="btn" download>Download</a>
+                    <button class="btn btn-danger" onclick="deleteVideo('{{ video.filename }}', this)">Löschen</button>
+                </div>
+                {% if video.original_url %}
+                <a href="{{ video.original_url }}" target="_blank" class="video-original">Original</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>Keine Videos gefunden.</p>
+        </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function filterVideos() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const cards = document.querySelectorAll(".video-card");
+        let hasVisible = false;
+        
+        cards.forEach(card => {
+            const title = card.getAttribute("data-title");
+            const author = card.getAttribute("data-author");
+            
+            if (title.includes(query) || author.includes(query)) {
+                card.classList.remove("hidden");
+                hasVisible = true;
+            } else {
+                card.classList.add("hidden");
+            }
+        });
+        
+        // Handle empty state manually if needed, or rely on CSS :empty rules if structure allows.
+        // Simple manual check:
+        // (Not strictly necessary if we had a dedicated "No results" div, but fine for now)
+    }
+
+    async function deleteVideo(filename, btnElement) {
+        if (!confirm("Video wirklich löschen?")) return;
+        
+        // Visual feedback
+        const card = btnElement.closest(".video-card");
+        card.style.opacity = "0.5";
+        
+        try {
+            const formData = new FormData();
+            formData.append("filename", filename);
+            
+            const res = await fetch("/delete", {
+                method: "POST",
+                body: formData
+            });
+            
+            const data = await res.json();
+            if (data.ok) {
+                card.remove();
+            } else {
+                alert("Fehler beim Löschen: " + (data.error || "Unbekannt"));
+                card.style.opacity = "1";
+            }
+        } catch (e) {
+            alert("Netzwerkfehler");
+            card.style.opacity = "1";
+        }
+    }
+  </script>
+</body>
+</html>

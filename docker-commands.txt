@@ -1,0 +1,18 @@
+# Im Projektordner (dort wo dein Dockerfile liegt)
+docker buildx build --platform linux/amd64 -t cloudflare-downloader:latest .
+
+# Prüfen, ob Image vorhanden:
+docker images cloudflare-downloader
+
+# Als TAR exportieren:
+docker save -o cloudflare-downloader.tar cloudflare-downloader:latest
+
+#compact everything command
+docker buildx build --platform linux/amd64 -t cloudflare-downloader:latest . && docker save -o cloudflare-downloader.tar cloudflare-downloader:latest
+
+
+#ChatGPT Chat
+https://chatgpt.com/c/68e788c8-5794-832a-b449-0bdee7a6ffe7
+
+#Claude Chat
+https://claude.ai/chat/a9c4165d-ba60-4957-9296-6fe9782921ab 

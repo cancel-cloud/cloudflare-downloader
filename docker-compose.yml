@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  cloudflare-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cloudflare-downloader:latest
+    container_name: cloudflare-downloader
+    restart: unless-stopped
+    environment:
+      - BASE_DOWNLOAD_DIR=/data
+    command: gunicorn -w 4 -b 0.0.0.0:8000 app.main:app
+    volumes:
+      - /srv/cloudflare-downloader:/data
+    ports:
+      - "127.0.0.1:8000:8000" # nur lokal, Cloudflared greift lokal zu
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
