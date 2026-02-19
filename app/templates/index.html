@@ -5,287 +5,416 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>DevBrew ⚪ Cloudflare Downloader</title>
   <style>
-    :root { color-scheme: dark; }
-    body { 
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      max-width: 800px; 
-      margin: 2rem auto; 
-      padding: 0 1rem; 
-      color: #eee; 
-      background: #0a0a0a;
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e12;
+      --panel: #161c24;
+      --panel-alt: #1d2430;
+      --text: #e6edf3;
+      --muted: #9ca8b7;
+      --border: #2b3545;
+      --accent: #5ec1ff;
+      --good: #74d88c;
+      --warn: #f0be62;
+      --bad: #ff7b72;
     }
-    header { margin-bottom: 1.25rem; }
-    input[type="url"] { 
-      width: 100%; 
-      padding: .65rem .75rem; 
-      border-radius: .5rem; 
-      border: 1px solid #444; 
-      background: #111; 
-      color: #eee;
-      font-size: 1rem;
+
+    *, *::before, *::after {
+      box-sizing: border-box;
     }
-    button { 
-      padding: .6rem .9rem; 
-      border-radius: .5rem; 
-      border: 1px solid #444; 
-      background: #1b1b1b; 
-      color: #eee; 
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      background-color: var(--bg);
+      background-image: radial-gradient(circle at 20% -20%, #1c2f46, var(--bg) 35%);
+      background-repeat: no-repeat;
+      background-size: 100% 100vh;
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 0.02em;
+    }
+
+    .muted { color: var(--muted); }
+
+    .link-btn,
+    button,
+    select,
+    textarea {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .link-btn,
+    button {
+      padding: 0.58rem 0.95rem;
       cursor: pointer;
-      font-size: .95rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
     }
-    button:hover { background: #222; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .row { display: flex; gap: .5rem; align-items: center; margin-top: .75rem; }
-    .card { 
-      border: 1px solid #333; 
-      background: #141414; 
-      padding: 1rem; 
-      border-radius: .75rem; 
-      margin-top: 1rem; 
+
+    button:hover,
+    .link-btn:hover {
+      background: var(--panel-alt);
     }
-    .muted { color: #9aa0a6; font-size: .95rem; }
-    .ok { color: #8bd48b; }
-    .error { color: #ff6b6b; }
-    .warning { color: #ffa500; }
-    .mono { font-family: monospace; }
-    .spinner { 
-      display: inline-block; 
-      width: 14px; 
-      height: 14px; 
-      border: 2px solid #444; 
-      border-top-color: #8bd48b; 
-      border-radius: 50%; 
-      animation: spin 0.8s linear infinite;
-      margin-left: 0.5rem;
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .status-badge {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.85rem;
-      font-weight: 500;
+
+    form {
+      border: 1px solid var(--border);
+      background: rgba(22, 28, 36, 0.8);
+      border-radius: 14px;
+      padding: 1rem;
     }
-    .status-queued { background: #3a3a00; color: #ffeb3b; }
-    .status-downloading { background: #003a3a; color: #4fc3f7; }
-    .status-retrying { background: #3a2f00; color: #ffcc66; }
-    .status-completed { background: #003a00; color: #8bd48b; }
-    .status-failed { background: #3a0000; color: #ff6b6b; }
+
+    textarea {
+      width: 100%;
+      display: block;
+      min-height: 120px;
+      padding: 0.7rem 0.8rem;
+      resize: vertical;
+    }
+
+    .form-row {
+      margin-top: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    select {
+      padding: 0.5rem 0.7rem;
+      min-width: 180px;
+    }
+
+    .queue {
+      margin-top: 1.5rem;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(22, 28, 36, 0.85);
+      padding: 0.9rem;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .url {
+      font-size: 0.95rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    .badge {
+      border-radius: 999px;
+      font-size: 0.78rem;
+      padding: 0.2rem 0.55rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border: 1px solid transparent;
+    }
+
+    .status-queued { color: #ffe59b; border-color: #75621a; }
+    .status-downloading { color: #7dd3fc; border-color: #1d5e7e; }
+    .status-retrying { color: #f0be62; border-color: #8f6a1f; }
+    .status-paused { color: #f5c2e7; border-color: #7d4970; }
+    .status-completed { color: #86efac; border-color: #2f7a46; }
+    .status-failed { color: #ff7b72; border-color: #8f2d30; }
+
+    .meta {
+      margin-top: 0.65rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.4rem;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .progress {
+      margin-top: 0.6rem;
+      height: 10px;
+      border-radius: 999px;
+      background: #111720;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .progress > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #8de2ff);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .actions {
+      margin-top: 0.7rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .danger {
+      border-color: #7a2f35;
+      color: var(--bad);
+    }
+
+    .error {
+      margin-top: 0.55rem;
+      color: var(--bad);
+      font-size: 0.86rem;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 640px) {
+      .url { white-space: normal; }
+    }
+
+    @media (max-width: 768px) {
+      body { background-attachment: scroll; }
+    }
   </style>
 </head>
 <body>
-  <header style="display: flex; justify-content: space-between; align-items: flex-start;">
-    <div>
-      <h1>DevBrew ⚪ Cloudflare Downloader</h1>
-      <p class="muted">Füge eine oder mehrere URLs ein (eine pro Zeile) und starte den Download.</p>
-    </div>
-    <a href="/gallery" style="padding: .6rem .9rem; border-radius: .5rem; border: 1px solid #444; background: #1b1b1b; color: #eee; text-decoration: none; font-size: .95rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-      Galerie <span>📂</span>
-    </a>
-  </header>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>DevBrew ⚪ Cloudflare Downloader</h1>
+        <p class="muted">Mehrere URLs pro Zeile, Preset wählen, Queue steuern.</p>
+      </div>
+      <a class="link-btn" href="/gallery">Galerie</a>
+    </header>
 
-  <form id="downloadForm" onsubmit="handleSubmit(event)">
-    <label for="u" class="muted">Video-URLs</label>
-    <textarea id="u" name="u" rows="5" placeholder="https://youtube.com/watch?v=...&#10;https://youtu.be/..." required style="width: 100%; padding: .65rem .75rem; border-radius: .5rem; border: 1px solid #444; background: #111; color: #eee; font-size: 1rem; resize: vertical; font-family: inherit;"></textarea>
-    <div class="row">
-      <button type="submit" id="submitBtn">Downloads starten</button>
-    </div>
-  </form>
+    <form id="downloadForm">
+      <label for="u" class="muted">Video-URLs</label>
+      <textarea id="u" name="u" required placeholder="https://youtube.com/watch?v=...&#10;https://youtu.be/...">{{ url or '' }}</textarea>
+      <div class="form-row">
+        <label class="muted" for="preset">Preset</label>
+        <select id="preset" name="preset">
+          {% for preset_id, cfg in preset_options.items() %}
+          <option value="{{ preset_id }}" {% if preset_id == default_preset %}selected{% endif %}>{{ cfg.label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" id="submitBtn">Downloads starten</button>
+      </div>
+      {% if feedback %}
+      <p style="margin-top: 0.7rem; color: var(--good);">{{ feedback }}</p>
+      {% endif %}
+      {% if error %}
+      <p style="margin-top: 0.7rem; color: var(--bad);">{{ error }}</p>
+      {% endif %}
+    </form>
 
-  <div id="queueSection" style="margin-top: 2rem; display: none;">
-    <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Download Queue</h2>
-    <div id="queueContainer"></div>
+    <section style="margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+        <h2 style="margin: 0; font-size: 1.2rem;">Download Queue</h2>
+        <button onclick="loadJobs(true)">Aktualisieren</button>
+      </div>
+      <div class="queue" id="queueContainer"></div>
+    </section>
   </div>
 
   <script>
-    // State to track jobs: { id: "job-uuid", url: "...", status: "...", error: "..." }
     let jobs = [];
+    let polling = null;
 
-    // Load jobs from localStorage on startup
-    try {
-      const stored = localStorage.getItem("devbrew_dl_jobs");
-      if (stored) {
-        jobs = JSON.parse(stored);
-        // Clean up very old jobs (optional, e.g. > 24h)
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-        jobs = jobs.filter(j => !j.timestamp || j.timestamp > cutoff);
-      }
-    } catch (e) {
-      console.error("Failed to load jobs", e);
-    }
-
-    // Check for server-injected job (Quicklink or single submission)
-    const serverJobId = "{{ job_id }}";
-    const serverUrl = "{{ url|e }}";
-    const serverFeedback = "{{ feedback|e }}";
-
-    if (serverJobId && serverUrl) {
-      // Check if we already have this job
-      const exists = jobs.find(j => j.realId === serverJobId);
-      if (!exists) {
-        const newJob = {
-          id: "server-" + serverJobId,
-          realId: serverJobId,
-          url: serverUrl,
-          status: "queued", // Assume queued initially
-          error: null,
-          timestamp: Date.now()
-        };
-        jobs.unshift(newJob);
-        saveJobs();
-      }
-    }
-
-    // Initial render and poll
-    if (jobs.length > 0) {
-      document.getElementById("queueSection").style.display = "block";
-      renderQueue();
-      // Resume polling for active jobs
-      jobs.forEach(job => {
-        if (job.status !== "completed" && job.status !== "failed") {
-          pollJob(job);
-        }
-      });
-    }
-
-    function saveJobs() {
-      try {
-        localStorage.setItem("devbrew_dl_jobs", JSON.stringify(jobs));
-      } catch (e) {
-        console.error("Failed to save jobs", e);
-      }
-    }
+    document.getElementById("downloadForm").addEventListener("submit", handleSubmit);
 
     async function handleSubmit(event) {
       event.preventDefault();
-      
-      const textarea = document.getElementById("u");
-      const rawInput = textarea.value.trim();
-      if (!rawInput) {
+      const raw = document.getElementById("u").value.trim();
+      const preset = document.getElementById("preset").value;
+      if (!raw) {
         alert("Bitte mindestens eine URL eingeben");
         return;
       }
 
-      const urls = rawInput.split(/\n+/).map(u => u.trim()).filter(u => u.length > 0);
-      if (urls.length === 0) return;
-
-      // Clear input
-      textarea.value = "";
-
-      // Show queue section
-      document.getElementById("queueSection").style.display = "block";
-
-      // Process each URL
-      for (const url of urls) {
-        await startJob(url);
-      }
-    }
-
-    async function startJob(url) {
-      // Create a temporary ID for the UI before we get the real one
-      const tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
-      
-      const job = {
-        id: tempId,
-        realId: null,
-        url: url,
-        status: "starting",
-        error: null,
-        timestamp: Date.now()
-      };
-      
-      jobs.unshift(job); // Add to top
-      saveJobs();
-      renderQueue();
+      const urls = raw.split(/\n+/).map(v => v.trim()).filter(Boolean);
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
 
       try {
-        const res = await fetch("/download", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ u: url })
-        });
-
-        const data = await res.json();
-
-        if (data.ok) {
-          job.realId = data.job_id;
-          job.status = "queued";
-          saveJobs();
-          // Start polling for this job
-          pollJob(job);
-        } else {
-          job.status = "failed";
-          job.error = data.error || "Unbekannter Fehler";
-          saveJobs();
+        for (const url of urls) {
+          const body = new URLSearchParams({ u: url, preset });
+          const res = await fetch("/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body,
+          });
+          const data = await res.json();
+          if (!data.ok) {
+            alert(`Fehler für ${url}: ${data.error || "unknown"}`);
+          }
         }
-      } catch (error) {
-        job.status = "failed";
-        job.error = "Netzwerkfehler: " + error.message;
-        saveJobs();
+        document.getElementById("u").value = "";
+      } finally {
+        submitBtn.disabled = false;
       }
-      
-      renderQueue();
+
+      await loadJobs(true);
     }
 
-    function renderQueue() {
+    async function loadJobs(forceRender = false) {
+      const res = await fetch("/api/jobs?page=1&per_page=60&sort=created_desc");
+      const data = await res.json();
+      if (!data.ok) return;
+      jobs = data.items || [];
+      if (forceRender || true) renderJobs();
+    }
+
+    function formatBytes(value) {
+      if (value === null || value === undefined) return "-";
+      const units = ["B", "KB", "MB", "GB"];
+      let num = Number(value);
+      let idx = 0;
+      while (num >= 1024 && idx < units.length - 1) {
+        num /= 1024;
+        idx += 1;
+      }
+      return `${num.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+    }
+
+    function formatEta(value) {
+      if (value === null || value === undefined) return "-";
+      const v = Number(value);
+      if (Number.isNaN(v) || v < 0) return "-";
+      if (v < 60) return `${v}s`;
+      const min = Math.floor(v / 60);
+      const sec = v % 60;
+      return `${min}m ${sec}s`;
+    }
+
+    function progressWidth(job) {
+      if (job.progress_percent !== null && job.progress_percent !== undefined) {
+        return Math.max(0, Math.min(100, Number(job.progress_percent)));
+      }
+      if (job.status === "completed") return 100;
+      return 0;
+    }
+
+    function canPause(job) {
+      return job.status === "queued" || job.status === "downloading";
+    }
+
+    function canResume(job) {
+      return job.status === "paused";
+    }
+
+    function canRetry(job) {
+      return job.status === "failed" || job.status === "paused";
+    }
+
+    async function action(url, method = "POST") {
+      const res = await fetch(url, { method });
+      const data = await res.json();
+      if (!data.ok) {
+        alert(data.error || "Action failed");
+      }
+      await loadJobs(true);
+    }
+
+    function renderJobs() {
       const container = document.getElementById("queueContainer");
       container.innerHTML = "";
 
-      jobs.forEach(job => {
-        const card = document.createElement("div");
-        card.className = "card";
-        
-        let statusClass = "muted";
-        if (job.status === "queued") statusClass = "status-queued";
-        if (job.status === "downloading") statusClass = "status-downloading";
-        if (job.status === "retrying") statusClass = "status-retrying";
-        if (job.status === "completed") statusClass = "status-completed";
-        if (job.status === "failed") statusClass = "status-failed";
+      if (jobs.length === 0) {
+        container.innerHTML = `<div class="card"><div class="muted">Noch keine Jobs.</div></div>`;
+        return;
+      }
 
-        let html = `
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${job.url}">
-                ${job.url}
-              </div>
-              <div style="margin-top: 0.5rem;">
-                <span class="status-badge ${statusClass}">${job.status.toUpperCase()}</span>
-                ${job.realId ? `<span class="mono muted" style="font-size: 0.8em; margin-left: 0.5rem;">${job.realId}</span>` : ''}
-              </div>
-              ${job.error ? `<div class="error" style="margin-top: 0.5rem; font-size: 0.9em;">${job.error}</div>` : ''}
-            </div>
+      for (const job of jobs) {
+        const card = document.createElement("article");
+        card.className = "card";
+        const width = progressWidth(job);
+
+        const statusClass = `status-${job.status || "queued"}`;
+        const totalBytes = job.total_bytes !== null && job.total_bytes !== undefined ? job.total_bytes : "-";
+
+        card.innerHTML = `
+          <div class="top">
+            <div class="url" title="${job.requested_url || ""}">${job.title || job.requested_url || job.id}</div>
+            <span class="badge ${statusClass}">${(job.status || "unknown").toUpperCase()}</span>
+          </div>
+          <div class="meta">
+            <div>Preset: <strong>${job.preset || "best"}</strong></div>
+            <div>Fortschritt: <strong>${width.toFixed(1)}%</strong></div>
+            <div>Bytes: <strong>${formatBytes(job.downloaded_bytes)} / ${formatBytes(totalBytes)}</strong></div>
+            <div>Speed: <strong>${formatBytes(job.speed_bps)}/s</strong></div>
+            <div>ETA: <strong>${formatEta(job.eta_seconds)}</strong></div>
+            <div>Versuch: <strong>${job.attempt_current || 0}/${job.attempt_max || 1}</strong></div>
+            <div>Profil: <strong>${job.runtime_profile || "-"}</strong></div>
+            <div>ID: <strong>${job.id}</strong></div>
+          </div>
+          <div class="progress"><span style="width:${width}%"></span></div>
+          ${job.error_message ? `<div class="error">${job.error_message}</div>` : ""}
+          <div class="actions">
+            ${canPause(job) ? `<button onclick="action('/api/jobs/${job.id}/pause')">Pause</button>` : ""}
+            ${canResume(job) ? `<button onclick="action('/api/jobs/${job.id}/resume')">Continue</button>` : ""}
+            ${canRetry(job) ? `<button onclick="action('/api/jobs/${job.id}/retry')">Retry</button>` : ""}
+            <button class="danger" onclick="action('/api/jobs/${job.id}', 'DELETE')">Delete</button>
           </div>
         `;
-        
-        card.innerHTML = html;
+
         container.appendChild(card);
-      });
+      }
     }
 
-    function pollJob(job) {
-      if (!job.realId) return;
-
-      const interval = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/status/${job.realId}`);
-          const data = await res.json();
-
-          if (data.ok) {
-            job.status = data.job.status;
-            if (data.job.error) job.error = data.job.error;
-            
-            saveJobs();
-            renderQueue();
-
-            if (job.status === "completed" || job.status === "failed") {
-              clearInterval(interval);
-            }
-          }
-        } catch (e) {
-          console.error("Polling error", e);
-        }
+    async function boot() {
+      await loadJobs(true);
+      if (polling) clearInterval(polling);
+      polling = setInterval(() => {
+        loadJobs(true).catch((err) => console.error(err));
       }, 2000);
     }
+
+    boot().catch((err) => {
+      console.error(err);
+      alert("Queue konnte nicht geladen werden");
+    });
   </script>
 </body>
 </html>

@@ -5,204 +5,277 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>DevBrew ⚪ Galerie</title>
   <style>
-    :root { color-scheme: dark; }
-    body { 
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      max-width: 1200px; 
-      margin: 2rem auto; 
-      padding: 0 1rem; 
-      color: #eee; 
-      background: #0a0a0a;
-    }
-    header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
-    h1 { margin: 0; font-size: 1.5rem; }
-    
-    .btn { 
-      display: inline-block;
-      padding: .6rem .9rem; 
-      border-radius: .5rem; 
-      border: 1px solid #444; 
-      background: #1b1b1b; 
-      color: #eee; 
-      cursor: pointer;
-      font-size: .95rem;
-      text-decoration: none;
-      transition: background 0.2s;
-    }
-    .btn:hover { background: #222; }
-    .btn-danger { border-color: #5a2a2a; color: #ff6b6b; background: #2a1010; }
-    .btn-danger:hover { background: #3a1515; }
-    
-    /* Search Bar */
-    .search-container { margin-bottom: 2rem; }
-    input[type="search"] {
-      width: 100%;
-      padding: .75rem 1rem;
-      border-radius: .5rem;
-      border: 1px solid #333;
-      background: #111;
-      color: #eee;
-      font-size: 1.1rem;
-    }
-    
-    /* Grid System */
-    .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .video-card {
-        background: #141414;
-        border: 1px solid #333;
-        border-radius: .75rem;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .video-thumb {
-        width: 100%;
-        aspect-ratio: 16/9;
-        object-fit: cover;
-        background: #000;
-    }
-    .video-content { padding: 1rem; flex: 1; display: flex; flex-direction: column; }
-    
-    .video-title {
-        font-weight: 600;
-        font-size: 1.1rem;
-        margin-bottom: 0.5rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    
-    .video-author { color: #9aa0a6; font-size: 0.9rem; margin-bottom: 1rem; }
-    
-    .video-actions {
-        margin-top: auto;
-        display: flex;
-        gap: 0.5rem;
-    }
-    
-    .video-actions .btn { flex: 1; text-align: center; }
-    
-    .video-original {
-        display: block;
-        text-align: center;
-        margin-top: 0.75rem;
-        font-size: 0.85rem;
-        color: #9aa0a6;
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-    .video-original:hover { color: #eee; text-decoration: underline; }
-    
-    .hidden { display: none !important; }
-    
-    .empty-state {
-        text-align: center;
-        color: #666;
-        margin-top: 4rem;
-        grid-column: 1 / -1;
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e12;
+      --panel: #161c24;
+      --panel-alt: #1d2430;
+      --text: #e6edf3;
+      --muted: #9ca8b7;
+      --border: #2b3545;
+      --bad: #ff7b72;
     }
 
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image: radial-gradient(circle at 80% -20%, #2a3a52, var(--bg) 40%);
+      background-repeat: no-repeat;
+      background-size: 100% 100vh;
+      background-attachment: fixed;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .btn,
+    button,
+    input,
+    select {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .btn,
+    button {
+      padding: 0.56rem 0.9rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn:hover,
+    button:hover { background: var(--panel-alt); }
+
+    .danger { border-color: #7a2f35; color: var(--bad); }
+
+    form.filters {
+      margin-bottom: 1.2rem;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 0.5rem;
+    }
+
+    input,
+    select {
+      padding: 0.55rem 0.7rem;
+      min-width: 0;
+    }
+
+    .stats {
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+      font-size: 0.92rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: rgba(22, 28, 36, 0.86);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .thumb {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #546174;
+    }
+
+    .content {
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+    }
+
+    .title {
+      font-weight: 600;
+      line-height: 1.35;
+      min-height: 2.7em;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .actions {
+      margin-top: auto;
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .actions .btn,
+    .actions button {
+      flex: 1;
+      min-width: 80px;
+    }
+
+    .pagination {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    @media (max-width: 920px) {
+      form.filters {
+        grid-template-columns: 1fr 1fr;
+      }
+      form.filters button { grid-column: span 2; }
+    }
+
+    @media (max-width: 768px) {
+      body { background-attachment: scroll; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>DevBrew ⚪ Galerie</h1>
-    <a href="/" class="btn">← Zurück zum Downloader</a>
-  </header>
+  <div class="wrap">
+    <header>
+      <h1 style="margin:0;">DevBrew ⚪ Galerie</h1>
+      <a href="/" class="btn">← Downloader</a>
+    </header>
 
-  <div class="search-container">
-    <input type="search" id="searchInput" placeholder="Suche nach Titel oder Kanal..." oninput="filterVideos()">
-  </div>
+    <form class="filters" method="get" action="/gallery">
+      <input type="search" name="q" placeholder="Suche Titel/Uploader/Video-ID" value="{{ q }}" />
+      <select name="sort">
+        <option value="created_desc" {% if sort == 'created_desc' %}selected{% endif %}>Neueste</option>
+        <option value="created_asc" {% if sort == 'created_asc' %}selected{% endif %}>Älteste</option>
+        <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Titel A-Z</option>
+        <option value="uploader_asc" {% if sort == 'uploader_asc' %}selected{% endif %}>Uploader A-Z</option>
+      </select>
+      <input type="text" name="uploader" placeholder="Uploader exakter Match" value="{{ uploader }}" />
+      <select name="status">
+        <option value="completed" {% if status == 'completed' %}selected{% endif %}>Nur completed</option>
+        <option value="" {% if not status %}selected{% endif %}>Alle</option>
+        <option value="failed" {% if status == 'failed' %}selected{% endif %}>failed</option>
+        <option value="paused" {% if status == 'paused' %}selected{% endif %}>paused</option>
+        <option value="queued" {% if status == 'queued' %}selected{% endif %}>queued</option>
+        <option value="downloading" {% if status == 'downloading' %}selected{% endif %}>downloading</option>
+      </select>
+      <button type="submit">Filter anwenden</button>
+      <input type="hidden" name="per_page" value="{{ per_page }}" />
+    </form>
 
-  <div class="gallery-grid" id="galleryGrid">
+    <div class="stats">{{ total }} Treffer • Seite {{ page }} / {{ pages if pages else 1 }}</div>
+
     {% if videos %}
-        {% for video in videos %}
-        <div class="video-card" data-title="{{ video.title|lower }}" data-author="{{ video.uploader|lower }}">
-            {% if video.thumbnail %}
-                <img src="/files/{{ video.thumbnail }}" class="video-thumb" alt="Thumbnail">
-            {% else %}
-                <div class="video-thumb" style="display: flex; align-items: center; justify-content: center; color: #333;">No Thumbnail</div>
+    <section class="grid">
+      {% for video in videos %}
+      <article class="card">
+        {% if video.thumbnail %}
+        <img class="thumb" src="/files/{{ video.thumbnail }}" alt="Thumbnail" />
+        {% else %}
+        <div class="thumb placeholder">No Thumbnail</div>
+        {% endif %}
+
+        <div class="content">
+          <div class="title" title="{{ video.title }}">{{ video.title }}</div>
+          <div class="meta">by {{ video.uploader }}</div>
+          <div class="meta">Status: {{ video.status }}</div>
+
+          <div class="actions">
+            {% if video.media_local_path %}
+            <a class="btn" href="/files/{{ video.media_local_path }}" download>Download</a>
             {% endif %}
-            
-            <div class="video-content">
-                <div class="video-title" title="{{ video.title }}">{{ video.title }}</div>
-                <div class="video-author">by {{ video.uploader }}</div>
-                
-                <div class="video-actions">
-                    <a href="/files/{{ video.filename }}" class="btn" download>Download</a>
-                    <button class="btn btn-danger" onclick="deleteVideo('{{ video.filename }}', this)">Löschen</button>
-                </div>
-                {% if video.original_url %}
-                <a href="{{ video.original_url }}" target="_blank" class="video-original">Original</a>
-                {% endif %}
-            </div>
+            <button class="danger" onclick="deleteVideo('{{ video.id }}', this)">Löschen</button>
+          </div>
+          {% if video.original_url %}
+          <a class="meta" target="_blank" href="{{ video.original_url }}">Original</a>
+          {% endif %}
         </div>
-        {% endfor %}
+      </article>
+      {% endfor %}
+    </section>
+
+    <nav class="pagination">
+      {% if page > 1 %}
+      <a class="btn" href="/gallery?page={{ page - 1 }}&per_page={{ per_page }}&q={{ q }}&sort={{ sort }}&uploader={{ uploader }}&status={{ status }}">← Zurück</a>
+      {% endif %}
+      {% if page < pages %}
+      <a class="btn" href="/gallery?page={{ page + 1 }}&per_page={{ per_page }}&q={{ q }}&sort={{ sort }}&uploader={{ uploader }}&status={{ status }}">Weiter →</a>
+      {% endif %}
+    </nav>
     {% else %}
-        <div class="empty-state">
-            <p>Keine Videos gefunden.</p>
-        </div>
+    <div class="empty">Keine Videos gefunden.</div>
     {% endif %}
   </div>
 
   <script>
-    function filterVideos() {
-        const query = document.getElementById("searchInput").value.toLowerCase();
-        const cards = document.querySelectorAll(".video-card");
-        let hasVisible = false;
-        
-        cards.forEach(card => {
-            const title = card.getAttribute("data-title");
-            const author = card.getAttribute("data-author");
-            
-            if (title.includes(query) || author.includes(query)) {
-                card.classList.remove("hidden");
-                hasVisible = true;
-            } else {
-                card.classList.add("hidden");
-            }
-        });
-        
-        // Handle empty state manually if needed, or rely on CSS :empty rules if structure allows.
-        // Simple manual check:
-        // (Not strictly necessary if we had a dedicated "No results" div, but fine for now)
-    }
-
-    async function deleteVideo(filename, btnElement) {
-        if (!confirm("Video wirklich löschen?")) return;
-        
-        // Visual feedback
-        const card = btnElement.closest(".video-card");
-        card.style.opacity = "0.5";
-        
-        try {
-            const formData = new FormData();
-            formData.append("filename", filename);
-            
-            const res = await fetch("/delete", {
-                method: "POST",
-                body: formData
-            });
-            
-            const data = await res.json();
-            if (data.ok) {
-                card.remove();
-            } else {
-                alert("Fehler beim Löschen: " + (data.error || "Unbekannt"));
-                card.style.opacity = "1";
-            }
-        } catch (e) {
-            alert("Netzwerkfehler");
-            card.style.opacity = "1";
+    async function deleteVideo(jobId, buttonEl) {
+      if (!confirm("Eintrag und Dateien wirklich löschen?")) return;
+      buttonEl.disabled = true;
+      try {
+        const res = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!data.ok) {
+          alert(data.error || "Löschen fehlgeschlagen");
+          buttonEl.disabled = false;
+          return;
         }
+        window.location.reload();
+      } catch (_err) {
+        alert("Netzwerkfehler");
+        buttonEl.disabled = false;
+      }
     }
   </script>
 </body>
