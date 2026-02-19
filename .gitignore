@@ -7,3 +7,6 @@ __pycache__/
 *.backup
 data/
 AGENTS.md
+downloader.db
+venv
+cloudflare-downloader.tar
