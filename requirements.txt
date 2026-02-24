@@ -1,5 +1,5 @@
 Flask==3.0.3
-yt-dlp==2026.02.04
+yt-dlp==2026.2.21
 gunicorn==23.0.0
 prometheus-client==0.21.1
 pytest==8.3.5
